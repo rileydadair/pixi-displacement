@@ -5,9 +5,10 @@
 </template>
 
 <script>
-import * as PIXI from 'pixi.js';
+import * as PIXI from "pixi.js/lib/core";
+import * as FILTER from "pixi.js/lib/filters";
+import * as LOADER from "pixi.js/lib/loaders";
 import { TimelineMax } from 'gsap';
-import { Sprite } from 'pixi.js';
 import filterImg from '@/assets/img/displacement.png';
 import data from '@/data';
 
@@ -15,29 +16,30 @@ export default {
   name: 'PixiCanvas',
   mounted() {
     this.createApp();
-    this.loadImages();
   },
   methods: {
     createApp() {
       PIXI.utils.skipHello(); // turn off console branding
-      PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.LINEAR;
-      PIXI.settings.PRECISION_FRAGMENT = PIXI.PRECISION.HIGH;
-
+      // PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.LINEAR;
+      // PIXI.settings.PRECISION_FRAGMENT = PIXI.PRECISION.HIGH;
+      this.element = document.getElementById("canvas-container");
       this.canvasWidth = this.$refs.canvas.clientWidth;
-      this.canvasHeight = this.$refs.canvas.clientWidth;
-      
-      this.app = new PIXI.Application({
-        view: this.$refs.canvas,
-        width: this.canvasWidth,
-        height: this.canvasHeight,
-        resolution: window.devicePixelRatio && window.devicePixelRatio >= 2 ? 2 : 1,
-        transparent: true,
-        // autoResize: true
-      });
+      this.canvasHeight = this.$refs.canvas.clientHeight;
+      this.dpr = window.devicePixelRatio && window.devicePixelRatio >= 2 ? 2 : 1;
+      this.renderer = PIXI.autoDetectRenderer(this.canvasWidth, this.canvasHeight, { transparent: true });
+      this.renderer.autoResize = true;
+      this.setScene();
+    },
+    setScene() {
+      this.element.appendChild(this.renderer.view);
+
+      this.stage = new PIXI.Container();
+
+      this.loadImages();
     },
 
     loadImages() {
-      const loader = PIXI.Loader.shared;
+      const loader = LOADER.shared;
 
       data.slides.forEach((slide, index) => {
         loader.add(`slide-${index}`, slide.image);
@@ -46,24 +48,34 @@ export default {
       this.images = [];
 
       loader.load( ( loader, images ) => {
-        // images are multi-dimensional objects
+        console.log(images)
         this.images = images;
-        this.createSlider();
-        // this.loader.hide();
+
+        this.createDisplacementFilter()
       });
     },
 
-    createSlider() {
-      this.slider = new PIXI.Container();
-      this.slider.width = this.app.screen.width;
-      this.slider.height = this.app.screen.height;
-      this.app.stage.addChild( this.slider );
+    createDisplacementFilter() {
+      this.dispSprite = PIXI.Sprite.fromImage('./assets/img/displacement.png');
+      this.dispSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
+      // this.dispSprite.scale.y = 6;
+      // this.dispSprite.scale.x = 6;
+      // this.dispSprite.x = 0;
+      // this.dispSprite.y = 0;
+      // this.dispSprite.anchor.x = 0.5;
+      // this.dispSprite.anchor.y = 0.5;
 
-      this.clipRect = new PIXI.Rectangle( 0, 0, this.app.screen.width, this.app.screen.height );
-      this.slider.filterArea = this.clipRect;
+      console.dir(this.dispSprite)
+
+      this.dispFilter = new FILTER.DisplacementFilter(this.dispSprite);
+
+      this.dispSprite.scale.y = 6;
+
+      this.dispSprite.scale.x = 6;
+
+      this.stage.addChild(this.dispSprite);
 
       this.addSlides();
-      this.createDisplacementFilter();
     },
 
     addSlides() {
@@ -73,55 +85,30 @@ export default {
 
       Object.keys(this.images).forEach(key => {
         let slide = new PIXI.Sprite( this.images[key].texture );
-        slide.width = this.app.screen.width;
-        slide.height = this.app.screen.height;
-        slide.y = i === 0 ? 0 : -this.app.screen.height;
+        slide.width = this.renderer.width;
+        slide.height = this.renderer.height;
+        // slide.y = i === 0 ? 0 : -this.renderer.height;
 
         this.slides[ i ] = slide;
-        this.slider.addChild( slide );
-
+        this.stage.addChild( slide );
+        console.dir('added')
         i++;
       });
+      this.animate();
     },
 
-    createDisplacementFilter() {
-      this.dispSprite = PIXI.Sprite.from('./assets/img/displacement.png');
-      this.dispSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
-      // this.dispSprite.scale.y = 1.8;
-      // this.dispSprite.scale.x = 1.8;
+    animate() {
+      // console.log('animate')
+      this.animation = requestAnimationFrame(this.animate.bind(this));
 
-      // this.app.stage.addChild( this.dispSprite );
+      this.dispSprite.x = this.count * 50;
+      this.dispSprite.y = this.count * 50;
 
-      this.dispFilter = new PIXI.filters.DisplacementFilter(this.dispSprite, 0);
+      this.count += 0.1;
 
-      // this.slider.filters = [ this.dispFilter ];
+      this.stage.filters = [this.dispFilter];
 
-
-      this.app.stage.filters = [this.dispFilter];
-      this.app.stage.addChild(this.dispSprite);
-
-      this.speed = .5;
-      this.animateFilter();
-    },
-
-    animateFilter() {
-      this.dispSprite.x += this.speed;
-      this.dispSprite.y += this.speed;
-      // this.app.renderer.render(this.stage);
-      requestAnimationFrame(this.animateFilter);
-
-      // const tl = new TimelineMax({ repeat: -1, repeatDelay: 0 })
-      //   .to( this.dispFilter.scale, 1, {
-      //     x: 5,
-      //     y: 5,
-      //     // ease: 'Power2.easeInOut'
-      //   }, 0 )
-
-      //   .to( this.dispFilter.scale, 1, {
-      //     x: 0,
-      //     y: 0,
-      //     // ease: 'Power2.easeInOut'
-      //   }, 1 )
+      this.renderer.render(this.stage);
     }
   }
 }
