@@ -1,115 +1,268 @@
 <template>
-  <div id="canvas-container" ref="canvasContainer">
-    <canvas id="slider-canvas" ref="canvas"></canvas>
+  <div class="canvas-container" ref="canvasContainer">
+    <canvas class="canvas" ref="canvas"></canvas>
   </div>
 </template>
-
+  
 <script>
 import * as PIXI from "pixi.js/lib/core";
 import * as FILTER from "pixi.js/lib/filters";
 import * as LOADER from "pixi.js/lib/loaders";
 import { TimelineMax } from 'gsap';
-import filterImg from '@/assets/img/displacement.png';
 import data from '@/data';
 
 export default {
   name: 'PixiCanvas',
   mounted() {
-    this.createApp();
+    PIXI.utils.skipHello(); // turn off console branding
+    PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.LINEAR;
+    PIXI.settings.PRECISION_FRAGMENT = PIXI.PRECISION.HIGH;
+
+    this.increment = 0.1;
+    this.delta = 0;
+    this.speed = 18;
+    this.displacementScale = 20;
+    this.canvasScale = 1.4;
+    this.width = this.$refs.canvas.clientWidth * this.canvasScale;
+    this.height = this.$refs.canvas.clientHeight * this.canvasScale;
+    this.dpr = window.devicePixelRatio && window.devicePixelRatio >= 2 ? 2 : 1;
+    this.renderer = PIXI.autoDetectRenderer( this.width, this.height, {
+      view: this.$refs.canvas,
+      resolution: this.dpr,
+      antialias: true,
+      autoDensity: true,
+      transparent: true,
+    });
+    // this.renderer.autoResize = true;
+    this.setScene();
+  },
+  beforeDestroy() {
+    this.stage.removeChildren();
+
+    this.stage.destroy(true);
+
+    // this.$el.removeEventListener('mouseenter', this.cancelAnimate);
+
+    // this.$el.removeEventListener('mouseleave', this.initAnimate);
+
+    window.removeEventListener('resize', this.resize);
   },
   methods: {
-    createApp() {
-      PIXI.utils.skipHello(); // turn off console branding
-      // PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.LINEAR;
-      // PIXI.settings.PRECISION_FRAGMENT = PIXI.PRECISION.HIGH;
-      this.element = document.getElementById("canvas-container");
-      this.canvasWidth = this.$refs.canvas.clientWidth;
-      this.canvasHeight = this.$refs.canvas.clientHeight;
-      this.dpr = window.devicePixelRatio && window.devicePixelRatio >= 2 ? 2 : 1;
-      this.renderer = PIXI.autoDetectRenderer(this.canvasWidth, this.canvasHeight, { transparent: true });
-      this.renderer.autoResize = true;
-      this.setScene();
-    },
-    setScene() {
-      this.element.appendChild(this.renderer.view);
-
+    setScene() {  
       this.stage = new PIXI.Container();
 
-      this.loadImages();
+      this.setFilterArea();
+
+      this.loadImages()
+        .then(() => {
+          this.createDisplacementFilter();
+
+          this.addImages();
+
+          this.animate();
+
+          document.body.classList.add('show');
+
+          // this.$el.addEventListener('mouseenter', this.cancelAnimate);
+
+          // this.$el.addEventListener('mouseleave', this.initAnimate);
+
+          window.addEventListener('resize', this.resize);
+        });
+    },
+
+    setFilterArea() {
+      this.clipRect = new PIXI.Rectangle( 0, 0, this.width, this.height );
+
+      this.stage.filterArea = this.clipRect;
     },
 
     loadImages() {
-      const loader = LOADER.shared;
+      return new Promise((resolve) => {
+        const loader = LOADER.shared;
 
-      data.slides.forEach((slide, index) => {
-        loader.add(`slide-${index}`, slide.image);
+        data.slides.forEach((slide, index) => {
+          loader.add(`slide-${index}`, slide.image);
+        })
+
+        this.images = [];
+
+        loader.load( ( loader, images ) => {
+          this.images = images;
+
+          resolve();
+        });
       })
-
-      this.images = [];
-
-      loader.load( ( loader, images ) => {
-        console.log(images)
-        this.images = images;
-
-        this.createDisplacementFilter()
-      });
     },
 
     createDisplacementFilter() {
-      this.dispSprite = PIXI.Sprite.fromImage('./assets/img/displacement.png');
-      this.dispSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
-      // this.dispSprite.scale.y = 6;
-      // this.dispSprite.scale.x = 6;
-      // this.dispSprite.x = 0;
-      // this.dispSprite.y = 0;
-      // this.dispSprite.anchor.x = 0.5;
-      // this.dispSprite.anchor.y = 0.5;
+      this.displacementSprite = PIXI.Sprite.fromImage("./assets/img/displacement.png");
 
-      console.dir(this.dispSprite)
+      this.displacementSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
 
-      this.dispFilter = new FILTER.DisplacementFilter(this.dispSprite);
+      this.displacementFilter = new FILTER.DisplacementFilter(this.displacementSprite, this.displacementScale);
 
-      this.dispSprite.scale.y = 6;
+      this.displacementSprite.scale.x = 3;
 
-      this.dispSprite.scale.x = 6;
+      this.displacementSprite.scale.y = 3;
 
-      this.stage.addChild(this.dispSprite);
+      this.stage.addChild(this.displacementSprite);
 
-      this.addSlides();
+      this.stage.filters = [this.displacementFilter];
     },
 
-    addSlides() {
+    addImages() {
       this.slides = {};
 
       let i = 0;
 
       Object.keys(this.images).forEach(key => {
         let slide = new PIXI.Sprite( this.images[key].texture );
-        slide.width = this.renderer.width;
-        slide.height = this.renderer.height;
-        // slide.y = i === 0 ? 0 : -this.renderer.height;
+
+        slide = this.setImage(slide);
+
+        slide.alpha = i === 0 ? 1 : 0;
 
         this.slides[ i ] = slide;
-        this.stage.addChild( slide );
-        console.dir('added')
+
+        if (i === 0) {
+          this.stage.addChild( slide );
+        }
+        
         i++;
       });
-      this.animate();
+    },
+
+    setImage(slide) {
+      // images set for aspect ratio 1:1
+      if (this.width > this.height) {
+        slide.width = this.width;
+
+        slide.height = this.width;
+      } else {
+        slide.width = this.height;
+
+        slide.height = this.height;
+      }
+
+      slide.x = this.width / 2;
+
+      slide.y = this.height / 2;
+
+      slide.anchor.set(0.5);
+
+      return slide;
     },
 
     animate() {
-      // console.log('animate')
       this.animation = requestAnimationFrame(this.animate.bind(this));
 
-      this.dispSprite.x = this.count * 50;
-      this.dispSprite.y = this.count * 50;
+      this.displacementSprite.x = this.delta * this.speed;
 
-      this.count += 0.1;
+      this.displacementSprite.y = -this.delta * this.speed;
 
-      this.stage.filters = [this.dispFilter];
+      this.delta += this.increment;
 
       this.renderer.render(this.stage);
+    },
+
+    initAnimate() {
+      let tl = new TimelineMax();
+
+      tl.to( this, 0.4, {
+        increment: 0.1,
+        ease: 'Sine.easeIn'
+      });
+    },
+
+    cancelAnimate() {
+      let tl = new TimelineMax();
+
+      tl.to( this, 0.8, {
+        increment: 0,
+        ease: 'Sine.easeIn'
+      });
+    },
+
+    resize() {
+      this.width = this.$refs.canvas.clientWidth * this.canvasScale;
+
+      this.height = this.$refs.canvas.clientHeight * this.canvasScale;
+
+      Object.keys(this.slides).forEach(key => {
+        this.slides[key] = this.setImage(this.slides[ key ])
+      })
+
+      this.setFilterArea()
+
+      this.renderer.resize(this.width, this.height);
+    },
+
+    handleNext(currentIndex, nextIndex) {
+      return new Promise((resolve) => {
+        this.slides[ nextIndex ].alpha = 0;
+        this.stage.addChild(this.slides[ nextIndex ])
+
+
+        let tl = new TimelineMax({
+          onComplete: () => {
+            this.stage.removeChild(this.slides[ currentIndex ])
+            resolve()
+          }
+        });
+
+        tl
+        .to ( this, 0.4, {
+          increment: 0.52,
+          ease: 'Sine.easeIn'
+        }, 'begin')
+
+        .to( this.stage.scale, 0.8, {
+          x: 1.02,
+          y: 1.02,
+          ease: 'Sine.easeIn'
+        }, 'begin+=0.2')
+
+        .to( this.stage, 0.8, {
+          x: this.renderer.screen.width * -.01,
+          ease: 'Sine.easeIn'
+        }, 'begin+=0.2')
+
+        .to( this.displacementFilter.scale, 0.7, {
+          x: 166,
+          y: 166,
+          ease: 'Sine.easeIn'
+        }, 'begin')
+
+        .to( this.slides[ nextIndex ], 0.6, {
+          alpha: 1,
+          ease: 'Sine.easeIn'
+        }, 'begin+=0.7' )
+
+        .to( this.stage.scale, 1.2, {
+          x: 1,
+          y: 1,
+          ease: 'Sine.easeOut'
+        }, 'begin+=1.05')
+
+        .to( this.stage, 1.2, {
+          x: 0,
+          ease: 'Sine.easeOut'
+        }, 'begin+=1.05')
+
+        .to( this.displacementFilter.scale, 1.2, {
+          x: this.displacementScale,
+          y: this.displacementScale,
+          ease: 'Power1.easeOut'
+        }, 'begin+=1.25')
+
+        .to (this, 1.2, {
+          increment: this.increment,
+          ease: 'Power1.easeOut'
+        }, 'begin+=1.25')
+      })
     }
   }
 }
 </script>
+  

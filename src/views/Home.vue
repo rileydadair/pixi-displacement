@@ -1,33 +1,26 @@
 <template>
-  <div class="home page">
-    <!-- <PixiCanvas /> -->
-    <PixiCanvas2 ref="canvas" />
+  <div class="page">
+    <PixiCanvas ref="canvas" />
     <SlideMaster
       :indicators="false"
+      :swipe="false"
       @onSliderEvent="onSliderEvent"
       @onSliderMount="onSliderMount"
     >
       <h1 slot="slides" class="slide" v-for="(slide, index) in data.slides" ref="titles">{{ slide.title }}</h1>
     </SlideMaster>
-
-    <footer class="footer">
-      <p>Pixi JS Displacement Filter - Inspired by <a href="https://shkret.com/" target="_blank">shkret.com</a></p>
-      <p>Scroll</p>
-    </footer>
   </div>
 </template>
 
 <script>
 import data from '@/data';
 import PixiCanvas from '@/components/PixiCanvas';
-import PixiCanvas2 from '@/components/PixiCanvas2';
 import SlideMaster from '@/components/SlideMaster';
 
 export default {
   name: 'home',
   components: {
     PixiCanvas,
-    PixiCanvas2,
     SlideMaster
   },
   data() {
@@ -50,7 +43,7 @@ export default {
       this.$refs.titles[currentIndex].classList.remove('is-active');
       this.$refs.titles[nextIndex].classList.add('is-active');
       this.$refs.canvas.handleNext(currentIndex, nextIndex)
-        .then(() => this.slider.toggleEvents())
+        .then(() => this.slider.toggleEvents());
     }
   }
 }
