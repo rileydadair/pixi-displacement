@@ -5,9 +5,7 @@
 </template>
   
 <script>
-import * as PIXI from "pixi.js/lib/core";
-import * as FILTER from "pixi.js/lib/filters";
-import * as LOADER from "pixi.js/lib/loaders";
+import * as PIXI from "pixi.js";
 import { TimelineMax } from 'gsap';
 import data from '@/data';
 
@@ -26,11 +24,11 @@ export default {
     this.width = this.$refs.canvas.clientWidth * this.canvasScale;
     this.height = this.$refs.canvas.clientHeight * this.canvasScale;
     this.dpr = window.devicePixelRatio && window.devicePixelRatio >= 2 ? 2 : 1;
-    this.renderer = PIXI.autoDetectRenderer( this.width, this.height, {
+    this.renderer = new PIXI.Renderer({
       view: this.$refs.canvas,
+      width: this.width,
+      height: this.height,
       resolution: this.dpr,
-      antialias: true,
-      autoDensity: true,
       transparent: true,
     });
     // this.renderer.autoResize = true;
@@ -79,7 +77,7 @@ export default {
 
     loadImages() {
       return new Promise((resolve) => {
-        const loader = LOADER.shared;
+        const loader = PIXI.Loader.shared;
 
         data.slides.forEach((slide, index) => {
           loader.add(`slide-${index}`, slide.image);
@@ -96,11 +94,11 @@ export default {
     },
 
     createDisplacementFilter() {
-      this.displacementSprite = PIXI.Sprite.fromImage("./assets/img/displacement.png");
+      this.displacementSprite = PIXI.Sprite.from("./assets/img/displacement.png");
 
       this.displacementSprite.texture.baseTexture.wrapMode = PIXI.WRAP_MODES.REPEAT;
 
-      this.displacementFilter = new FILTER.DisplacementFilter(this.displacementSprite, this.displacementScale);
+      this.displacementFilter = new PIXI.filters.DisplacementFilter(this.displacementSprite, this.displacementScale);
 
       this.displacementSprite.scale.x = 3;
 
@@ -134,7 +132,6 @@ export default {
     },
 
     setImage(slide) {
-      // images set for aspect ratio 1:1
       if (this.width > this.height) {
         slide.width = this.width;
 
@@ -201,13 +198,14 @@ export default {
     handleNext(currentIndex, nextIndex) {
       return new Promise((resolve) => {
         this.slides[ nextIndex ].alpha = 0;
-        this.stage.addChild(this.slides[ nextIndex ])
 
+        this.stage.addChild(this.slides[ nextIndex ]);
 
         let tl = new TimelineMax({
           onComplete: () => {
-            this.stage.removeChild(this.slides[ currentIndex ])
-            resolve()
+            this.stage.removeChild(this.slides[ currentIndex ]);
+            
+            resolve();
           }
         });
 
