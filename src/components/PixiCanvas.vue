@@ -18,7 +18,7 @@ export default {
 
     this.increment = 0.1;
     this.delta = 0;
-    this.speed = 18;
+    this.speed = 14;
     this.displacementScale = 20;
     this.canvasScale = 1.4;
     this.width = this.$refs.canvas.clientWidth * this.canvasScale;
@@ -213,7 +213,7 @@ export default {
 
         tl
         .to ( this, 0.7, {
-          increment: 0.44,
+          increment: 0.57,
           ease: 'Sine.easeIn'
         }, 'begin')
 
