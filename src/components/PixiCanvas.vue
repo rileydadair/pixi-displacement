@@ -212,54 +212,54 @@ export default {
         // Could also animate `this.displacementSprite.scale.x = 3` values;
 
         tl
-        .to ( this, 0.4, {
-          increment: 0.52,
+        .to ( this, 0.7, {
+          increment: 0.44,
           ease: 'Sine.easeIn'
         }, 'begin')
 
-        .to( this.stage.scale, 0.8, {
+        .to( this.stage.scale, 0.9, {
           x: 1.02,
           y: 1.02,
           ease: 'Sine.easeIn'
         }, 'begin+=0.2')
 
-        .to( this.stage, 0.8, {
+        .to( this.stage, 0.9, {
           x: this.renderer.screen.width * -.01,
           ease: 'Sine.easeIn'
         }, 'begin+=0.2')
 
-        .to( this.displacementFilter.scale, 0.7, {
-          x: 166,
-          y: 166,
+        .to( this.displacementFilter.scale, 0.9, {
+          x: 146,
+          y: 146,
           ease: 'Sine.easeIn'
         }, 'begin')
 
         .to( this.slides[ nextIndex ], 0.6, {
           alpha: 1,
           ease: 'Sine.easeIn'
-        }, 'begin+=0.7' )
+        }, 'begin+=0.9' )
 
-        .to( this.stage.scale, 1.2, {
+        .to( this.stage.scale, 1, {
           x: 1,
           y: 1,
           ease: 'Sine.easeOut'
-        }, 'begin+=1.05')
+        }, 'begin+=1.2')
 
-        .to( this.stage, 1.2, {
+        .to( this.stage, 1, {
           x: 0,
           ease: 'Sine.easeOut'
-        }, 'begin+=1.05')
+        }, 'begin+=1.2')
 
-        .to( this.displacementFilter.scale, 1.2, {
+        .to( this.displacementFilter.scale, 1, {
           x: this.displacementScale,
           y: this.displacementScale,
-          ease: 'Power1.easeOut'
-        }, 'begin+=1.25')
+          ease: 'Sine.easeOut'
+        }, 'begin+=1.4')
 
-        .to (this, 1.2, {
+        .to (this, 1, {
           increment: this.increment,
-          ease: 'Power1.easeOut'
-        }, 'begin+=1.25')
+          ease: 'Sine.easeOut'
+        }, 'begin+=1.4')
       })
     }
   }
