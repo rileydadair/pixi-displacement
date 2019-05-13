@@ -204,10 +204,12 @@ export default {
         let tl = new TimelineMax({
           onComplete: () => {
             this.stage.removeChild(this.slides[ currentIndex ]);
-            
+
             resolve();
           }
         });
+
+        // Could also animate `this.displacementSprite.scale.x = 3` values;
 
         tl
         .to ( this, 0.4, {
